@@ -10,14 +10,19 @@ from oauth2client import file, client, tools
 import pytz
 import requests
 
+# if True, keep record of processed events, and don't repeat insertions
+USE_HISTORY = True
+HISTORY_FILE = 'processed_event_name_hashes.log'
+
 # If modifying these scopes, delete the file token.json.
 SCOPES = 'https://www.googleapis.com/auth/calendar'
 
 # URLs for the schedule and proceedings
 SCHEDULE_URL = 'https://nips.cc/Conferences/2018/Schedule'
-EVENT_URL_FMT = 'https://nips.cc/Conferences/2018/Schedule?showEvent={}'
+EVENT_URL = 'https://nips.cc/Conferences/2018/Schedule?showEvent='
+PAPERS_URL = 'https://papers.nips.cc'
 PROC_URL = 'https://papers.nips.cc/book/advances-in-neural-information-processing-systems-31-2018'
-PAPER_URL_FMT = 'https://papers.nips.cc{}'
+
 
 # EVENT_TYPES = ['Tutorial', 'Break', 'Poster', 'Oral', 'Spotlight',
 #                'Demonstration', 'Invited Talk', 'Workshop', 'Talk']
@@ -39,8 +44,7 @@ def main():
     proc_tags = proc_soup.find_all(href=re.compile('/paper/'))
     papers = dict()
     for tag in proc_tags:
-        paper_url = PAPER_URL_FMT.format(tag.attrs['href'])
-        papers[tag.text] = paper_url
+        papers[tag.text] = PAPERS_URL + tag.attrs['href']
 
     # get all events (as HTML div tags)
     sched_html = requests.get(SCHEDULE_URL).text
@@ -51,26 +55,40 @@ def main():
     timezone = pytz.timezone(TIMEZONE)
 
     calendars = service.calendarList().list().execute()['items']
-    calendar_ids = {c['summary']: c['id'] for c in calendars}
+    calendar_ids_by_name = {c['summary']: c['id'] for c in calendars}
 
-    for div in event_divs:
-        # extract information from tags
-        event_id = div.attrs['id'].split('_')[1]
-        event_type = div.find(class_="pull-right maincardHeader maincardType").text
-        event_sched = div.find(lambda tag: tag.get('class') == ["maincardHeader"]).text
-        event_name = div.find(class_="maincardBody").text
-        event_speakers = div.find(class_="maincardFooter").text.split('·')
-        event_speakers = [s.strip() for s in event_speakers]
-
-        if not event_type in calendar_ids:
+    event_types = [d.find(class_="pull-right maincardHeader maincardType").text
+                   for d in event_divs]
+    for event_type in set(event_types):
+        if not event_type in calendar_ids_by_name:
             calendar = dict(
                 summary=event_type,
                 timeZone=TIMEZONE,
                 location=LOCATION,
             )
             service.calendars().insert(body=calendar).execute()
-            calendars = service.calendarList().list().execute()['items']
-            calendar_ids = {c['summary']: c['id'] for c in calendars}
+
+    calendars = service.calendarList().list().execute()['items']
+    calendar_ids_by_name = {c['summary']: c['id'] for c in calendars}
+
+    if USE_HISTORY:
+        with open(HISTORY_FILE, 'r') as history_file:
+            processed_events = [int(line.rstrip())
+                                for line in history_file.readlines()]
+        history_file = open(HISTORY_FILE, 'a')
+
+    for div, event_type in zip(event_divs, event_types):
+        event_id = div.attrs['id'].split('_')[1]
+        if event_id in processed_events:
+            continue
+        processed_events.append(event_id)
+        print(event_id, file=history_file)
+
+        # extract information from tags
+        event_name = div.find(class_="maincardBody").text
+        event_sched = div.find(lambda tag: tag.get('class') == ["maincardHeader"]).text
+        event_speakers = div.find(class_="maincardFooter").text.split('·')
+        event_speakers = [s.strip() for s in event_speakers]
 
         # process event time and location
         time, loc = event_sched.split('@')
@@ -87,7 +105,7 @@ def main():
         end_time = timezone.localize(end_time).isoformat('T')
 
         # get event description from details page
-        event_url = EVENT_URL_FMT.format(event_id)
+        event_url = EVENT_URL + event_id
         event_doc = requests.get(event_url).text
         event_soup = bs4.BeautifulSoup(event_doc, 'html.parser')
         event_description = event_soup.find(class_='abstractContainer').text
@@ -123,7 +141,8 @@ def main():
         )
 
         # add to calendar
-        g_event = service.events().insert(calendarId=calendar_ids[event_type],
+        calendar_id = calendar_ids_by_name[event_type]
+        g_event = service.events().insert(calendarId=calendar_id,
                                           body=event_spec)
         g_event.execute()
 
