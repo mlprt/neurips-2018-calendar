@@ -12,7 +12,7 @@ Note that in the pre-made and public calendars:
 If you would like to be able to use or edit these calendars but do not want to run the script yourself, `.ics` files for each calendar/event type are provided [individually](https://github.com/mlprt/neurips-2018-calendar/blob/master/calendars.zip?raw=true), or as a single merged calendar [with](https://github.com/mlprt/neurips-2018-calendar/blob/master/calendars_merged.zip?raw=true) or [without](https://github.com/mlprt/neurips-2018-calendar/blob/master/calendars_merged_minimal.zip?raw=true) the "Spotlight" event type included. The files in these archives can be imported by Google Calendar, and probably by other calendar applications. (Note: If you want the calendars to remain separate after importing into Google Calendar, you may need to create empty calendars with appropriate names and selecting them in the import dialog.)
 
 ## Public calendars
-If you only wish to view/subscribe to the calendars (but not edit them, I think) they are publicly available at the links provided [here](./public_links.md).
+If you only wish to view/subscribe to the calendars (but not edit them, I think) they are publicly available at the Google Calendar links provided [here](./public_links.md).
 
 ## Running the script yourself
 1. Clone (or download and extract) this repository.
