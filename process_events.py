@@ -36,6 +36,7 @@ from httplib2 import Http
 from oauth2client import file, client, tools
 import pytz
 import requests
+import tqdm
 
 # exclude posters from the calendar
 # NOTE: much faster when `True` & poster calendar is basically unusable anyway
@@ -175,7 +176,8 @@ def main():
             processed_events = []
 
     # process the list of events
-    for div, event_type in zip(event_tags, event_types):
+    progress_bar = tqdm(zip(event_tags, event_types))
+    for div, event_type in progress_bar:
         event_id = int(div.attrs['id'].split('_')[1])
         if USE_HISTORY:
             if event_id in processed_events:
@@ -188,12 +190,10 @@ def main():
 
         # extract information from tags
         event_name = div.find(class_="maincardBody").text
+        progress_bar.set_description("{}: {}".format(event_type, event_name))
         event_sched = div.find(lambda tag: tag.get('class') == ["maincardHeader"]).text
         event_speakers = div.find(class_="maincardFooter").text.split('·')
         event_speakers = [s.strip() for s in event_speakers]
-
-        if VERBOSE:
-            print()
 
         # process event time and location
         time, loc = event_sched.split('@')
