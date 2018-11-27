@@ -1,8 +1,10 @@
 # NeurIPS 2018 Calendar Generator
 This script scrapes the event list from the NeurIPS website, and creates and populates calendars using the Google Calendar API. Pre-made calendars are also provided.
 
+Note that in the pre-made and public calendars, the "Talk", "Invited Talk", "Talk (Posner Lecture)", and "Talk (Greiman Lecture)" have been amalgamated into a single "Talk" calendar. A duplicate "Lunch on your own" event on Tuesday is also removed.
+
 ## Pre-made calendar files
-If you would like to be able to use or edit these calendars but do not want to run the script yourself, `.ics` files for each calendar/event type are provided. These can be imported by Google Calendar, and probably by other calendar applications as well.
+If you would like to be able to use or edit these calendars but do not want to run the script yourself, `.ics` files for each calendar/event type are provided [here](https://github.com/mlprt/neurips-2018-calendar/blob/master/calendars.zip?raw=true). These can be imported by Google Calendar, and probably by other calendar applications as well.
 
 ## Public calendars
 If you only wish to view/subscribe to the calendars (but not edit them, I think) they are publicly available at the links provided [here](./public_links.md).
