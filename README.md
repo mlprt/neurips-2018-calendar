@@ -1,10 +1,15 @@
 # NeurIPS 2018 Calendar Generator
 This script scrapes the event list from the NeurIPS website, and creates and populates calendars using the Google Calendar API. Pre-made calendars are also provided.
 
-Note that in the pre-made and public calendars, the "Talk", "Invited Talk", "Talk (Posner Lecture)", and "Talk (Breiman Lecture)" have been amalgamated into a single "Talk" calendar. A duplicate "Lunch on your own" event on Tuesday is also removed.
+This may be useful for those looking to customize their conference schedule or configure notifications for certain events. As some of the calendars have a number of overlapping events, switching to "Day" (rather than "Week") view results in a cleaner presentation.
+
+Note that in the pre-made and public calendars:
+- The event types "Talk", "Invited Talk", "Talk (Posner Lecture)", and "Talk (Breiman Lecture)" have been amalgamated into a single "Talk" calendar. 
+- The "Poster" event type is excluded.
+- A duplicate "Lunch on your own" event on Tuesday is removed.
 
 ## Pre-made calendar files
-If you would like to be able to use or edit these calendars but do not want to run the script yourself, `.ics` files for each calendar/event type are provided [here](https://github.com/mlprt/neurips-2018-calendar/blob/master/calendars.zip?raw=true). These can be imported by Google Calendar, and probably by other calendar applications as well.
+If you would like to be able to use or edit these calendars but do not want to run the script yourself, `.ics` files for each calendar/event type are provided [individually](https://github.com/mlprt/neurips-2018-calendar/blob/master/calendars.zip?raw=true), or as a single merged calendar [with](https://github.com/mlprt/neurips-2018-calendar/blob/master/calendars_merged.zip?raw=true) or [without](https://github.com/mlprt/neurips-2018-calendar/blob/master/calendars_merged_minimal.zip?raw=true) the "Spotlight" event type included. These files be imported by Google Calendar, and probably by other calendar applications. (Note: If you want the calendars to remain separate after importing into Google Calendar, you may need to create empty calendars with appropriate names and selecting them in the import dialog.)
 
 ## Public calendars
 If you only wish to view/subscribe to the calendars (but not edit them, I think) they are publicly available at the links provided [here](./public_links.md).
