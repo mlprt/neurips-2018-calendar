@@ -267,7 +267,7 @@ def main():
         calendar_id = calendar_ids_by_name[event_type]
         g_event = service.events().insert(calendarId=calendar_id,
                                           body=event_spec)
-        #g_event.execute()
+        g_event.execute()
 
         # keep track, if ordered
         if USE_HISTORY:
