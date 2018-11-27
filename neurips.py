@@ -20,21 +20,19 @@ The Google Calendar API authentication code is derived from the guides linked
 above.
 """
 
-
-import datetime
 import re
 
 from bs4 import BeautifulSoup
 from dateutil.parser import parse
 from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+#from googleapiclient.errors import HttpError
 from httplib2 import Http
 from oauth2client import file, client, tools
 import pytz
 import requests
 
 # exclude posters from the calendar
-# Note: much faster when `True` & poster calendar is basically unusable anyway
+# NOTE: much faster when `True` & poster calendar is basically unusable anyway
 EXCLUDE_POSTERS = True
 POSTER_EVENT_TYPE = 'Poster'
 
