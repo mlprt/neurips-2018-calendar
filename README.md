@@ -1,7 +1,7 @@
 # NeurIPS 2018 Calendar Generator
 This script scrapes the event list from the NeurIPS website, and creates and populates calendars using the Google Calendar API. Pre-made calendars are also provided.
 
-This may be useful for those looking to customize their conference schedule or configure notifications for certain events.
+This may be useful for those looking to customize their conference schedule or configure notifications for certain events. As some of the calendars have a number of overlapping events, switching to "Day" (rather than "Week") view results in a cleaner presentation.
 
 Note that in the pre-made and public calendars:
 - The event types "Talk", "Invited Talk", "Talk (Posner Lecture)", and "Talk (Breiman Lecture)" have been amalgamated into a single "Talk" calendar. 
