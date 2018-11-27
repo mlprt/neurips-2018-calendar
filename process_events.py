@@ -36,7 +36,7 @@ from httplib2 import Http
 from oauth2client import file, client, tools
 import pytz
 import requests
-import tqdm
+from tqdm import tqdm
 
 # exclude posters from the calendar
 # NOTE: much faster when `True` & poster calendar is basically unusable anyway
@@ -47,10 +47,12 @@ POSTER_EVENT_TYPE = 'Poster'
 USE_HISTORY = True
 HISTORY_FILE = 'processed_event_ids.log'
 
-
 # if True, use previously-scraped copy of website HTML (minimize traffic)
 USE_SOURCE_BACKUP = True
 SOURCE_BACKUP_FILE = 'source_backup.json'
+
+# whether to print event types and names as they are processed
+VERBOSE = True
 
 # If you change this, delete token.json.
 OAUTH_SCOPE = 'https://www.googleapis.com/auth/calendar'
@@ -70,8 +72,6 @@ PROC_URL = ('https://papers.nips.cc/book/'
 TIMEZONE = 'America/Montreal'  # this is an alias for America/Toronto
 LOCATION = '1001 Jean Paul Riopelle Pl, Montreal, QC H2Z 1H5'
 
-# load
-SOURCE_BACKUP = dict()
 
 def load_json(json_path):
     """Try to load a JSON file, or return an empty dictionary."""
@@ -98,16 +98,20 @@ def find_all_url(url, source_backup=None, **kwargs):
 
     Automatically backs up scraped HTML to disk, to reduce number of requests.
     """
-    if url in source_backup:
+    backup_exists = url in source_backup
+    if backup_exists:
         html = source_backup[url]
     else:
         html = requests.get(url).text
-        update_json({url: html})
     soup = BeautifulSoup(html, HTML_PARSER)
     found = soup.find_all(**kwargs)
-    return found, html
+    if not backup_exists:
+        # only need to backup the relevant tags
+        all_tags = '\n'.join(str(tag) for tag in found)
+        update_json({url: all_tags})
+    return found
 
-def datetime_strs_to_rfc3339(strs, tz=timezone):
+def datetime_strs_to_rfc3339(strs, timezone):
     """Parse list of partial datetime strings, output RFC 3339 timestamp.
 
     Some partial datetime strings are: "Mon", "Dec", "3" (or "3rd"),
@@ -117,6 +121,20 @@ def datetime_strs_to_rfc3339(strs, tz=timezone):
     dt_loc = timezone.localize(dt)
     rfc = dt_loc.isoformat('T')
     return rfc
+
+def clear_calendars(service, calendars=None):
+    """Run this if you need to remove all the events from `calendars`.
+
+    By default, will get a list of all calendars from `service`."""
+    for calendar in calendars:
+        try:
+            events = service.events().list(calendarId=calendar['id']).execute()
+            events = events['items']
+        except KeyError:
+            continue
+        for event in events:
+            service.events().delete(calendarId=calendar['id'],
+                                    eventId=event['id']).execute()
 
 def main():
     # Google authentication
@@ -140,7 +158,7 @@ def main():
         papers[tag.text] = PAPERS_URL + tag.attrs['href']
 
     # get all div tags corresponding to events
-    event_tags = find_all_url(SCHEDULE_URL, url=source_backup=source_backup,
+    event_tags = find_all_url(SCHEDULE_URL, source_backup=source_backup,
                               id=re.compile('maincard_'))
 
     # timezone object for localizing timestamps
@@ -152,11 +170,12 @@ def main():
     # make sure a calendar exists for each event type
     event_types = [d.find(class_="pull-right maincardHeader maincardType").text
                    for d in event_tags]
-    new_calendar_names = [event_type in set(event_types)
+    # create new calendars for event types, if necessary
+    new_calendar_names = [event_type for event_type in set(event_types)
                           if not event_type in calendar_ids_by_name]
-    if any(new_calendar_names):
+    for name in new_calendar_names:
         calendar = dict(
-            summary=event_type,
+            summary=name,
             timeZone=TIMEZONE,
             location=LOCATION,
         )
@@ -166,7 +185,7 @@ def main():
         calendars = service.calendarList().list().execute()['items']
         calendar_ids_by_name = {c['summary']: c['id'] for c in calendars}
 
-    # try to load history if toggled
+    # try to load history of previously processed events, if toggled
     if USE_HISTORY:
         try:
             with open(HISTORY_FILE, 'r') as history_file:
@@ -176,7 +195,7 @@ def main():
             processed_events = []
 
     # process the list of events
-    progress_bar = tqdm(zip(event_tags, event_types))
+    progress_bar = tqdm(zip(event_tags, event_types), total=len(event_tags))
     for div, event_type in progress_bar:
         event_id = int(div.attrs['id'].split('_')[1])
         if USE_HISTORY:
@@ -190,7 +209,8 @@ def main():
 
         # extract information from tags
         event_name = div.find(class_="maincardBody").text
-        progress_bar.set_description("{}: {}".format(event_type, event_name))
+        if VERBOSE:
+            tqdm.write("{}: {}".format(event_type, event_name))
         event_sched = div.find(lambda tag: tag.get('class') == ["maincardHeader"]).text
         event_speakers = div.find(class_="maincardFooter").text.split('·')
         event_speakers = [s.strip() for s in event_speakers]
@@ -204,26 +224,26 @@ def main():
             # AM/PM same for start and end; add to start string for parsing
             start_strs += [end_strs[-1]]
         end_strs = start_strs[:-2] + end_strs
-        start_time = datetime_strs_to_rfc3339(start_strs)
-        end_time = datetime_strs_to_rfc3339(end_strs)
+        start_time = datetime_strs_to_rfc3339(start_strs, timezone=timezone)
+        end_time = datetime_strs_to_rfc3339(end_strs, timezone=timezone)
 
         # get event description from details page
-        event_description = find_all_url(EVENT_URL + str(event_id),
+        event_url = EVENT_URL + str(event_id)
+        event_description = find_all_url(event_url,
                                          source_backup=source_backup,
                                          class_='abstractContainer')[0].text
 
-        # add list of authors/speakers at the start of the description
-        event_description = (', '.join(event_speakers) + '\n\n'
-                             + event_description)
-
         # if the event title is in the proceedings, link to there. else details
-        # NOTE: I'm not sure this does anything. I don't see any attachments.
         try:
             link_url = papers[event_name]
-            file_url = link_url + '.pdf'
         except KeyError:
             link_url = event_url
-            file_url = ""
+
+        # add link to details and list of authors/speakers to the description
+        event_description = ('<a href="{}">Link to details</a>'
+                             .format(link_url) + '\n\n'
+                             + ', '.join(event_speakers) + '\n\n'
+                             + event_description)
 
         # information needed to add the event to the calendar
         event_spec = dict(
@@ -240,17 +260,14 @@ def main():
             ),
             source=dict(
                 url=link_url,
-            ),
-            attachments=[dict(
-                fileUrl= file_url,
-            )]
+            )
         )
 
         # add to calendar
         calendar_id = calendar_ids_by_name[event_type]
         g_event = service.events().insert(calendarId=calendar_id,
                                           body=event_spec)
-        g_event.execute()
+        #g_event.execute()
 
         # keep track, if ordered
         if USE_HISTORY:
