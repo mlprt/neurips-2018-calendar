@@ -12,6 +12,11 @@ this should not happen (i.e. no repeat IDs in the entire list of events on the
 website), but this allows the creation of the calendar to take place over
 multiple sessions, if necessary.
 
+If `USE_SOURCE_BACKUP` is `True`, the HTML strings pulled during previous
+sessions will be used, if available. The most recently pulled HTML is stored
+automatically in a JSON file. The intention is to (maybe) reduce the number of
+requests to the NeurIPS website.
+
 Before running, visit https://developers.google.com/calendar/quickstart/python
 to activate the Google Calendar API, and place the `credentials.json` file in
 the same directory as this script.
@@ -20,6 +25,7 @@ The Google Calendar API authentication code is derived from the guides linked
 above.
 """
 
+import json
 import re
 
 from bs4 import BeautifulSoup
@@ -40,6 +46,11 @@ POSTER_EVENT_TYPE = 'Poster'
 USE_HISTORY = True
 HISTORY_FILE = 'processed_event_ids.log'
 
+
+# if True, use previously-scraped copy of website HTML (minimize traffic)
+USE_SOURCE_BACKUP = True
+SOURCE_BACKUP_FILE = 'source_backup.json'
+
 # If you change this, delete token.json.
 OAUTH_SCOPE = 'https://www.googleapis.com/auth/calendar'
 
@@ -58,14 +69,44 @@ PROC_URL = ('https://papers.nips.cc/book/'
 TIMEZONE = 'America/Montreal'  # this is an alias for America/Toronto
 LOCATION = '1001 Jean Paul Riopelle Pl, Montreal, QC H2Z 1H5'
 
-find_all_url(url, **kwargs):
-    """Shorthand for BeautifulSoup `find_all` on a url, by `requests`."""
-    html = requests.get(url).text
+# load
+SOURCE_BACKUP = dict()
+
+def load_json(json_path):
+    """Try to load a JSON file, or return an empty dictionary."""
+    try:
+        with open(json_path, 'r') as jsonf:
+            parsed = json.load(jsonf)
+    except FileNotFoundError:
+        parsed = dict()
+    return parsed
+
+def update_json(entry, json_path=SOURCE_BACKUP_FILE):
+    """Add an entry to a JSON file."""
+    parsed = load_json(json_path)
+    parsed.update(entry)
+    with open(json_path, 'w') as jsonf:
+        json.dump(parsed, jsonf)
+    return parsed
+
+def find_all_url(url, source_backup=None, **kwargs):
+    """Shorthand for BeautifulSoup `find_all` on a url, by `requests`.
+
+    If `url` is a key in `source_backup`, the corresponding value is taken as
+    the HTML string to be parsed.
+
+    Automatically backs up scraped HTML to disk, to reduce number of requests.
+    """
+    if url in source_backup:
+        html = source_backup[url]
+    else:
+        html = requests.get(url).text
+        update_json({url: html})
     soup = BeautifulSoup(html, HTML_PARSER)
     found = soup.find_all(**kwargs)
-    return found
+    return found, html
 
-datetime_strs_to_rfc3339(strs, tz=timezone):
+def datetime_strs_to_rfc3339(strs, tz=timezone):
     """Parse list of partial datetime strings, output RFC 3339 timestamp.
 
     Some partial datetime strings are: "Mon", "Dec", "3" (or "3rd"),
@@ -85,14 +126,21 @@ def main():
         creds = tools.run_flow(flow, store)
     service = build('calendar', 'v3', http=creds.authorize(Http()))
 
+    # load backup of website HTML if toggled
+    source_backup = dict()
+    if USE_SOURCE_BACKUP:
+        source_backup = load_json(SOURCE_BACKUP_FILE)
+
     # get links to all papers
-    proc_tags = find_all_url(PROC_URL, href=re.compile('/paper/'))
+    proc_tags = find_all_url(PROC_URL, source_backup=source_backup,
+                             href=re.compile('/paper/'))
     papers = dict()
     for tag in proc_tags:
         papers[tag.text] = PAPERS_URL + tag.attrs['href']
 
     # get all div tags corresponding to events
-    event_tags = find_all_url(SCHEDULE_URL, id=re.compile('maincard_'))
+    event_tags = find_all_url(SCHEDULE_URL, url=source_backup=source_backup,
+                              id=re.compile('maincard_'))
 
     # timezone object for localizing timestamps
     timezone = pytz.timezone(TIMEZONE)
@@ -157,7 +205,8 @@ def main():
         end_time = datetime_strs_to_rfc3339(end_strs)
 
         # get event description from details page
-        event_description = find_all_url(EVENT_URL + str(event_id)
+        event_description = find_all_url(EVENT_URL + str(event_id),
+                                         source_backup=source_backup,
                                          class_='abstractContainer')[0].text
 
         # add list of authors/speakers at the start of the description
