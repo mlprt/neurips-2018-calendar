@@ -192,6 +192,9 @@ def main():
         event_speakers = div.find(class_="maincardFooter").text.split('·')
         event_speakers = [s.strip() for s in event_speakers]
 
+        if VERBOSE:
+            print()
+
         # process event time and location
         time, loc = event_sched.split('@')
         start_str, end_str = time.split('--')
