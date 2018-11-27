@@ -1,5 +1,5 @@
 # NeurIPS 2018 Calendar Generator
-This script scrapes the event list from the NeurIPS website, and creates and populates calendars using the Google Calendar API. Pre-made calendars are also provided.
+This script scrapes the event list from the NeurIPS website, and creates and populates calendars using the Google Calendar API. Pre-made calendars are also provided. The description for each event includes the list of authors, the abstract, and a link to details on the NeurIPS website.
 
 This may be useful for those looking to customize their conference schedule or configure notifications for certain events. As some of the calendars have a number of overlapping events, switching to "Day" (rather than "Week") view results in a cleaner presentation.
 
