@@ -15,8 +15,10 @@ If you would like to be able to use or edit these calendars but do not want to r
 If you only wish to view/subscribe to the calendars (but not edit them, I think) they are publicly available at the Google Calendar links provided [here](./public_links.md).
 
 ## Running the script yourself
+The script was written for Python 3.7, with dependency versions given in `requirements.txt`. Assuming you have `pip` installed:
+
 1. Clone (or download and extract) this repository.
-2. Enter the repository's working directory and run `pip install -r requirements.txt` (preferably within a new virtual environment).
+2. Enter the repository directory and run `pip install -r requirements.txt` (preferably in a new virtual environment).
 3. Visit https://developers.google.com/calendar/quickstart/python to activate the Google Calendar API for your account, and place the resulting `credentials.json` file into the same directory as the script.
 4. Edit the flags in `process_events.py` as desired (optional).
 5. Run `python process_events.py`.
