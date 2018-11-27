@@ -126,6 +126,8 @@ def clear_calendars(service, calendars=None):
     """Run this if you need to remove all the events from `calendars`.
 
     By default, will get a list of all calendars from `service`."""
+    if calendars is None:
+        calendars = service.calendarList().list().execute()['items']
     for calendar in calendars:
         try:
             events = service.events().list(calendarId=calendar['id']).execute()
