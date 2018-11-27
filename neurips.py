@@ -36,7 +36,7 @@ import requests
 EXCLUDE_POSTERS = True
 POSTER_EVENT_TYPE = 'Poster'
 
-# if True, keep record of processed events, and don't repeat insertions
+# if True, keep record of processed events, and don't repeat additions
 USE_HISTORY = True
 HISTORY_FILE = 'processed_event_ids.log'
 
@@ -53,7 +53,8 @@ PAPERS_URL = 'https://papers.nips.cc'
 PROC_URL = ('https://papers.nips.cc/book/'
             + 'advances-in-neural-information-processing-systems-31-2018')
 
-# locale
+# location
+# see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 TIMEZONE = 'America/Montreal'  # this is an alias for America/Toronto
 LOCATION = '1001 Jean Paul Riopelle Pl, Montreal, QC H2Z 1H5'
 
@@ -65,7 +66,7 @@ find_all_url(url, **kwargs):
     return found
 
 datetime_strs_to_rfc3339(strs, tz=timezone):
-    """Parse partial datetime strings, output RFC 3339 timestamp.
+    """Parse list of partial datetime strings, output RFC 3339 timestamp.
 
     Some partial datetime strings are: "Mon", "Dec", "3" (or "3rd"),
     "12:00:00".
